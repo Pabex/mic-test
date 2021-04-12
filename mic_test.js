@@ -61,12 +61,14 @@ MicTest.prototype = {
                     var audioChunks = [];
 
                     object.mediaRecorder.addEventListener("dataavailable", function (event) {
+                        console.log(event);
                         audioChunks.push(event.data);
                     });
 
                     object.mediaRecorder.addEventListener("stop", function () {
-                        var audioBlob = new Blob(audioChunks);
+                        var audioBlob = new Blob(audioChunks, {type: "audio/mp4"});
                         var audioUrl = URL.createObjectURL(audioBlob)
+                        console.log(audioUrl);
                         object.audio = new Audio(audioUrl);
                     });
 
@@ -95,15 +97,16 @@ MicTest.prototype = {
     },
     listenRecording: function (callbackFinishedAudio) {
         var audio = this.audio;
-        this.audioContext.resume().then(function() {
-            audio.play();
+        audio.play();
             audio.addEventListener("ended", function () {
                 if (callbackFinishedAudio !== undefined &&
                     callbackFinishedAudio !== null) {
                     callbackFinishedAudio();
                 }
             });
-        });
+        /*this.audioContext.resume().then(function() {
+            
+        });*/
     },
     stopListeningRecording: function () {
         this.audio.pause();
