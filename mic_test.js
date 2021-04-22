@@ -48,7 +48,12 @@ function MicTest(audioContext, callbackExito, callbackError) {
 }
 
 MicTest.prototype = {
-    record: function () {
+    /*
+        callbackStopMaxTime: Es un callback que se va a ejecutar después que pase
+            el tiempo máximo de grabación.
+        maxTimeForRecordMS: Es el tiempo máximo de grabación, por default es 15000 ms.
+    */
+    record: function (callbackStopMaxTime, maxTimeForRecordMS) {
         if (typeof this.audioContext === 'undefined') {
             this.error = true;
             console.log('WebAudio is not supported, test cannot run.');
@@ -61,20 +66,26 @@ MicTest.prototype = {
                     var audioChunks = [];
 
                     object.mediaRecorder.addEventListener("dataavailable", function (event) {
-                        console.log(event);
                         audioChunks.push(event.data);
                     });
 
                     object.mediaRecorder.addEventListener("stop", function () {
                         var audioBlob = new Blob(audioChunks, {type: "audio/mp4"});
                         var audioUrl = URL.createObjectURL(audioBlob)
-                        console.log(audioUrl);
                         object.audio = new Audio(audioUrl);
+                        console.log(object.audio);
+                        if (callbackStopMaxTime != null) {
+                            callbackStopMaxTime();
+                        }
                     });
 
+                    if (maxTimeForRecordMS === null || isNaN(maxTimeForRecordMS)) {
+                        maxTimeForRecordMS = 15000;
+                    }
+
                     object.timeoutRecordId = setTimeout(function () {
-                        object.mediaRecorder.stop();
-                    }, 15000);
+                        object.stopRecording();
+                    }, maxTimeForRecordMS);
                 })
                 .catch(function (error) {
                     if (object.callbackError !== undefined && object.callbackError !== null) {
@@ -84,26 +95,31 @@ MicTest.prototype = {
         }
     },
     stopRecording: function () {
-        clearInterval(this.timeoutRecordId);
-        this.mediaRecorder.stop();
-        if (this.stream != null) {
-            var audioTracks = this.stream.getAudioTracks();
-            if (audioTracks != null && audioTracks.length > 0) {
-                if (audioTracks[0] != null) {
-                    audioTracks[0].stop();
+        if (this.timeoutRecordId != null) {
+            clearInterval(this.timeoutRecordId);
+        }
+        if (this.mediaRecorder != null && this.mediaRecorder.state === "recording") {
+            this.mediaRecorder.stop();
+            if (this.stream != null) {
+                var audioTracks = this.stream.getAudioTracks();
+                if (audioTracks != null && audioTracks.length > 0) {
+                    if (audioTracks[0] != null) {
+                        audioTracks[0].stop();
+                    }
                 }
             }
         }
     },
     listenRecording: function (callbackFinishedAudio) {
         var audio = this.audio;
+        console.log(audio);
         audio.play();
-            audio.addEventListener("ended", function () {
-                if (callbackFinishedAudio !== undefined &&
-                    callbackFinishedAudio !== null) {
-                    callbackFinishedAudio();
-                }
-            });
+        audio.addEventListener("ended", function () {
+            if (callbackFinishedAudio !== undefined &&
+                callbackFinishedAudio !== null) {
+                callbackFinishedAudio();
+            }
+        });
         /*this.audioContext.resume().then(function() {
             
         });*/
